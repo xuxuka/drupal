@@ -1,0 +1,12 @@
+name = Form parse img
+description = Module for form parse page
+package = Forms
+version = VERSION
+core = 7.x
+files[] = lib/simple_html_dom.php
+stylesheets[all][] = main.css
+scripts[] = main.js
+
+; Information added by Drupal.org packaging script on 2014-08-06
+version = "7.32"
+project = "drupal"

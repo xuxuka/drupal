@@ -1,0 +1,298 @@
+<?php
+/**
+ * @return array
+ */
+function my_module_menu() {
+    $items = array();
+    $items['my_module'] = array(
+        'title' => 'List images',
+        'page callback' => 'my_module_form',
+        //'file' => 'my_module.pages.inc',
+        'options' => array('attributes' => array('class' => array('test-class'))),
+        //'page callback' => 'my_module_form',
+        //'page callback' => 'drupal_get_form',
+        //'page arguments' => array('calculator_page_form'),
+        'menu_name' => 'main-menu',
+        'access arguments' => array('access content'),
+        'description' => 'List images',
+        'type' => MENU_NORMAL_ITEM,
+        //'type' => MENU_CALLBACK,
+        'access callback' => TRUE,
+        'expanded' => TRUE,
+    );
+    return $items;
+}
+
+function my_module_block_info()
+{
+    $blocks['parse_url'] = array(
+        'info'  => t('Form input url'),
+        'cache' => DRUPAL_CACHE_PER_ROLE,
+        //'status' => 1,
+    );
+    $blocks['list_imgs'] = array(
+        'info'  => t('List Images'),
+        'cache' => DRUPAL_CACHE_PER_ROLE,
+        //'status' => 1,
+    );
+
+    return $blocks;
+}
+
+function my_module_block_view($delta = '', $url = '')
+{
+    $blocks = array();
+    switch ($delta) {
+        case 'parse_url':
+            $blocks['subject'] = t('');
+            $blocks['content'] = drupal_get_form('my_module_my_form');//theme('form_tpl', array('urls' => ));
+            break;
+        case 'list_imgs':
+            $blocks['subject'] = t('');
+            $blocks['content'] = theme('list_images', array('urls' => array()));
+            break;
+    }
+
+    return $blocks;
+}
+
+function my_module_theme()
+{
+    return array(
+        'list_images'   => array(
+            'variables' => array(
+                'urls' => array()
+            ),
+            'template'  => '/themes/block-my_module-list_images',
+        ),
+        'form_tpl'   => array(
+            'variables' => array(
+                'urls' => array()
+            ),
+            'template'  => '/themes/block-my_module-form_parse',
+        ),
+    );
+}
+
+function my_module_list()
+{
+    $header = array(
+        array('data' => t('Name')),
+        array('data' => t('URL')),
+        array('data' => t('Actions'))
+    );
+    $rss = db_select('rssfeeds', 'n')
+        ->fields('n', array('id', 'name', 'url'))
+        ->execute()->fetchAll();
+    $row = array();
+    if ($rss) {
+        foreach ($rss as $rss_feed) {
+            $actions = array(
+                l(t('edit'), 'admin/config/content/rss_feeds/' . $rss_feed->id . '/edit'),
+                l(t('delete'), 'admin/config/content/rss_feeds/' . $rss_feed->id . '/delete'),
+            );
+
+            $row [] = array(
+                array('data' => $rss_feed->name),
+                array('data' => $rss_feed->url),
+                array('data' => implode(' | ', $actions)),
+            );
+        }
+    }
+
+    return theme('table', array(
+        'header' => $header,
+        'rows'   => $row,
+    ));
+}
+
+/**
+ * @return string
+ */
+function my_module_form() {
+    return '';//drupal_get_form('my_module_my_form');
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ * @return array
+ */
+function my_module_my_form($form, $form_state) {
+    $form = array();
+    $form['url'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Url:'),
+        '#size' => 100,
+    );
+
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Run'),
+    );
+
+    return $form;
+}
+
+/**
+ * Validate function for calculator_page_form.
+ */
+function my_module_my_form_validate($form, &$form_state) {
+    /*if (!is_numeric($form_state['values'][''])) {
+        form_set_error('number1', t('Value in field "Number 1" is wrong.'));
+    }
+    if (!is_numeric($form_state['values'][''])) {
+        form_set_error('number2', t('Value in field "Number 2" is wrong.'));
+    }*/
+}
+
+/**
+ * Submit function for calculator_page_form.
+ */
+function my_module_my_form_submit($form, &$form_state) {
+
+    $url = trim($form_state['values']['url']);
+
+    if(!empty($url))
+    {
+        variable_set('parse_site_url', $url);
+
+        $array = array();
+
+        drupal_alter(array("my_module_block_view_list_imgs"), $array);
+    }
+}
+
+function my_module_block_view_alter(&$data, $block) {
+
+    $parse_site_url = variable_get('parse_site_url');
+
+    if (($block->delta == 'list_imgs') && ($parse_site_url))
+    {
+        variable_del('parse_site_url');
+
+        $data['content'] = theme('list_images', array('urls' => getImgs($parse_site_url)));
+        $data['subject'] = t('List Images');
+
+    }
+    else if($block->delta == 'form_tpl')
+    {
+        //form_set_value()
+    }
+
+}
+
+/**
+ * @param $url
+ * @return array
+ */
+function getImgs($url)
+{
+    try{
+        $images_ext = array('png', 'jpeg', 'jpg', 'bmp', 'gif');
+
+        $images = array();
+
+        if(strpos($url, 'http://') !== 0)
+        {
+            $url = 'http://'.$url;
+        }
+
+        $url_arr = parse_url($url);
+
+        $host = $url_arr['scheme'].'://'.$url_arr['host'];
+
+        $html = new simple_html_dom();
+
+        $file = @file_get_contents($url);
+
+        if($file === false)
+            throw new Exception('Load Failed');
+
+        $html->load($file);
+        //if(!($file = file_get_contents($url)))
+            //throw new Exception('Load Failed');
+
+        $html->load_file($url);
+
+        $collection = $html->find('img');
+
+        foreach($collection as $element)
+        {
+            $src = trim($element->src);
+
+            $img_ext = pathinfo($src, PATHINFO_EXTENSION);
+
+            $src = formatSrc($src, $url, $host);
+
+            if(in_array($img_ext, $images_ext) && !in_array($src, $images))
+            {
+                $images[] = htmlspecialchars($src);
+            }
+
+        }
+
+        $collection = $html->find('a');
+
+        foreach($collection as $element)
+        {
+            $src = trim($element->href);
+
+            $img_ext = pathinfo($src, PATHINFO_EXTENSION);
+
+            $src = formatSrc($src, $url, $host);
+
+            if(in_array($img_ext, $images_ext) && !in_array($src, $images))
+            {
+                $images[] = htmlspecialchars($src);
+            }
+        }
+
+        return $images;
+
+    } catch (Exception $e){
+        drupal_set_message(t('Url is not valid'), 'warning');
+    }
+
+}
+
+/**
+ * @param $src
+ * @param $url
+ * @param $host
+ * @return string
+ */
+function formatSrc($src, $url, $host)
+{
+    if(strpos($src, $host) === false)
+    {
+        if(strpos($src, '/') === 0)
+        {
+            $src = $host.$src;
+        }
+        else
+        {
+            $src = trim($url, '/').'/'.$src;
+        }
+    }
+
+    return $src;
+}
+
+/**
+ * Implements hook_help.
+ *
+ * Displays help and module information.
+ *
+ * @param path
+ *   Which path of the site we're using to display help
+ * @param arg
+ *   Array that holds the current path as returned from arg() function
+ */
+function my_module_help($path, $arg) {
+    switch ($path) {
+        case "admin/help#my_module":
+            return '<p>'. t("Displays links to nodes created on this date") .'</p>';
+            break;
+    }
+}

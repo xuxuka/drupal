@@ -1,0 +1,19 @@
+1. Install drupal 7.x
+2. Move my_module into directory : /sites/all/modules/
+3. Admin panel :
+    - Modules -> Find package Forms -> click enabled for module Form parse img -> Save configuration
+    - Structure -> Blocks :
+                            Form input url
+                                - Region(content)
+                                - Weight(0)
+                                - configure :
+                                     - Show block on specific pages :
+                                        - Only the listed pages : my_module
+                                        - Save block
+                            List Images
+                               - Region(content)
+                               - Weight(0)
+                               - configure :
+                                   - Show block on specific pages :
+                                        - Only the listed pages : my_module
+                                        - Save block
