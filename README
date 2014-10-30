@@ -1,5 +1,5 @@
 1. Install drupal 7.x
-2. Move my_module into directory : /sites/all/modules/
+2. Create and move into directory : /sites/all/modules/my_module/
 3. Admin panel :
     - Modules -> Find package Forms -> click enabled for module Form parse img -> Save configuration
     - Structure -> Blocks :
